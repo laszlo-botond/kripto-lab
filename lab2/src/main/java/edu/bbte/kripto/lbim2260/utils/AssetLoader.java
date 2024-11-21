@@ -20,8 +20,7 @@ public class AssetLoader {
         try {
             return Files.readAllBytes(Paths.get(this.getClass().getClassLoader().getResource(path).toURI()));
         } catch (IOException | NullPointerException | URISyntaxException e) {
-            System.out.println(e.getClass().getSimpleName());
-            throw new FileNotFoundException("Can't load " + path);
+            throw new FileNotFoundException(e.getClass().getSimpleName() + ": Can't load " + path);
         }
     }
 
@@ -30,10 +29,6 @@ public class AssetLoader {
         String key = profile.getKey();
         String iv = profile.getIv();
         int blockSize = profile.getBlockSize();
-//        if (blockSize % (8 * 16) != 0) {
-//            log.error("AES implementation only supports block sizes that are multiples of 16 bytes! Exiting...");
-//            exit(0);
-//        }
         if (blockSize % 8 != 0) {
             log.error("AES implementation only supports block sizes that are multiples of 8 bits! Exiting...");
             exit(0);
