@@ -26,7 +26,6 @@ public class AssetLoader {
     public void writeToDisk(String name, byte[] data) {
         try {
             String currentDir = System.getProperty("user.dir");
-            System.out.println("Current working directory: " + currentDir);
 
             String path = currentDir + "\\src\\main\\resources\\" + name;
 
