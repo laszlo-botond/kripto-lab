@@ -1,0 +1,44 @@
+{
+  "profiles": {
+    "aes1": {
+      "blockSize": 960,
+      "alg": "aes",
+      "key": "key1",
+      "method": "ECB",
+      "iv": "",
+      "padding": "S-F"
+    },
+    "aes2": {
+      "blockSize": 1280,
+      "alg": "aes",
+      "key": "key",
+      "method": "CBC",
+      "iv": "asdfQWER",
+      "padding": "DES"
+    },
+    "aes3": {
+      "blockSize": 2560,
+      "alg": "aes",
+      "key": "key",
+      "method": "CFB",
+      "iv": "qwerASDF",
+      "padding": "ZERO"
+    },
+    "aes4": {
+      "blockSize": 1560,
+      "alg": "aes",
+      "key": "key",
+      "method": "OFB",
+      "iv": "qwerASDF",
+      "padding": "DES"
+    },
+    "aes5": {
+      "blockSize": 1600,
+      "alg": "aes",
+      "key": "key",
+      "method": "CTR",
+      "iv": "qwerASDF",
+      "padding": "ZERO"
+    }
+  }
+}
