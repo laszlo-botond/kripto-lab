@@ -10,7 +10,7 @@ import static java.lang.System.exit;
 @Slf4j
 public class PadderFactory {
     public static Padder getPadder(String type, int blockSize) {
-        switch (type) {
+        switch (type.toUpperCase()) {
             case "ZERO": {
                 return new ZeroPadder(blockSize);
             }

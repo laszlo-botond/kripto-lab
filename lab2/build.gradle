@@ -26,9 +26,6 @@ dependencies {
 
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.15.3'
 
-//    implementation 'cn.com.xuxiaowei.utils:aes:0.0.1'
-
-//    implementation 'cn.opom:AesCrypt:1.0'
     implementation 'com.codahale:aes-gcm-siv:0.4.3'
 }
 

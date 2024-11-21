@@ -11,7 +11,7 @@ import java.io.IOException;
 import static java.lang.System.exit;
 
 @Slf4j
-public class Main {
+public class RoundTripTest {
     public static void main(String[] args) {
         // INIT
         byte[] fileBytes = {};

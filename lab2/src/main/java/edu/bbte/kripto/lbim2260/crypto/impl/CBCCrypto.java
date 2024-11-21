@@ -1,7 +1,6 @@
 package edu.bbte.kripto.lbim2260.crypto.impl;
 
 import edu.bbte.kripto.lbim2260.crypto.Crypto;
-import edu.bbte.kripto.lbim2260.padding.Padder;
 import edu.bbte.kripto.lbim2260.utils.ArrayUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -13,12 +12,12 @@ import static java.lang.System.exit;
 
 @Slf4j
 public class CBCCrypto extends Crypto {
-    public CBCCrypto(String key, int blockSize, String iv, Padder padder) {
-        super(key, blockSize, iv, padder);
+    public CBCCrypto(String key, int blockSize, String iv, String padding, String algorithm) {
+        super(key, blockSize, iv, padding, algorithm);
     }
 
     @Override
-    public byte[] encrypt(byte[] plain) {
+    public byte[] encryptAes(byte[] plain) {
         int blockNr = plain.length / blockSize;
 
         byte[] result = new byte[]{};
@@ -50,7 +49,7 @@ public class CBCCrypto extends Crypto {
     }
 
     @Override
-    public byte[] decrypt(byte[] cipher) {
+    public byte[] decryptAes(byte[] cipher) {
         int localBlockSize = blockSize + 28;
         int blockNr = cipher.length / localBlockSize;
 
@@ -73,6 +72,64 @@ public class CBCCrypto extends Crypto {
                 log.error("Error concatenating decryption results. Exiting...", e);
                 exit(0);
             }
+        }
+
+        return result;
+    }
+
+    @Override
+    public byte[] encryptVigenere(byte[] plain) {
+        int blockNr = plain.length / blockSize;
+
+        byte[] result = new byte[]{};
+
+        byte[] lastEncrypted = iv;
+        try {
+            for (int i = 0; i < blockNr; i++) {
+                byte[] plainByteBlock = ArrayUtils.subArray(plain, i * blockSize, (i + 1) * blockSize);
+
+                byte[] xorAppliedByteBlock = ArrayUtils.xorEach(
+                        lastEncrypted,
+                        plainByteBlock
+                );
+
+                byte[] encryptedByteBlock = vcip.seal(xorAppliedByteBlock);
+
+                result = ArrayUtils.concatBytes(result, encryptedByteBlock);
+                lastEncrypted = encryptedByteBlock;
+            }
+        } catch (IOException e) {
+            log.error("Error concatenating encryption results. Exiting...", e);
+            exit(0);
+        }
+
+        return result;
+    }
+
+    @Override
+    public byte[] decryptVigenere(byte[] cipher) {
+        int blockNr = cipher.length / blockSize;
+
+        byte[] result = new byte[]{};
+
+        byte[] lastDecrypted = iv;
+        try {
+            for (int i = 0; i < blockNr; i++) {
+                byte[] cipherByteBlock = ArrayUtils.subArray(cipher, i * blockSize, (i + 1) * blockSize);
+
+                byte[] decryptedByteBlock = vcip.open(cipherByteBlock);
+
+                byte[] xorAppliedByteBlock = ArrayUtils.xorEach(
+                        lastDecrypted,
+                        decryptedByteBlock
+                );
+
+                result = ArrayUtils.concatBytes(result, xorAppliedByteBlock);
+                lastDecrypted = cipherByteBlock;
+            }
+        } catch (IOException e) {
+            log.error("Error concatenating encryption results. Exiting...", e);
+            exit(0);
         }
 
         return result;

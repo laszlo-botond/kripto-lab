@@ -2,10 +2,9 @@ package edu.bbte.kripto.lbim2260.utils;
 
 import edu.bbte.kripto.lbim2260.crypto.Crypto;
 import edu.bbte.kripto.lbim2260.crypto.CryptoFactory;
-import edu.bbte.kripto.lbim2260.padding.Padder;
-import edu.bbte.kripto.lbim2260.padding.PadderFactory;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -24,6 +23,22 @@ public class AssetLoader {
         }
     }
 
+    public void writeToDisk(String name, byte[] data) {
+        try {
+            String currentDir = System.getProperty("user.dir");
+            System.out.println("Current working directory: " + currentDir);
+
+            String path = currentDir + "\\src\\main\\resources\\" + name;
+
+            File outputFile = new File(path);
+            Files.write(outputFile.toPath(), data);
+            log.info("File written successfully!");
+        } catch (IOException | NullPointerException e) {
+            log.error("Can't write to target file. Exiting...");
+            exit(0);
+        }
+    }
+
     public static Crypto setupCrypto() {
         Config.Profile profile = ConfigProvider.getProfile(System.getenv("CRYPT_PROFILE"));
         String key = profile.getKey();
@@ -34,7 +49,11 @@ public class AssetLoader {
             exit(0);
         }
         blockSize = blockSize / 8; // from bits to bytes
-        Padder padder = PadderFactory.getPadder(profile.getPadding(), blockSize);
-        return CryptoFactory.getCrypto(profile.getMethod(), key, blockSize, iv, padder);
+        log.info("Creating configuration: {} | {} | {}",
+                profile.getAlg().toUpperCase(),
+                profile.getMethod().toUpperCase(),
+                profile.getPadding().toUpperCase()
+        );
+        return CryptoFactory.getCrypto(profile.getMethod(), key, blockSize, iv, profile.getPadding(), profile.getAlg());
     }
 }

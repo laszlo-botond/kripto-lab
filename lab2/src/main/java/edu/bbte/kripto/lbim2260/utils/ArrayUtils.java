@@ -29,7 +29,6 @@ public class ArrayUtils {
 
     public static byte[] xorEach(byte[] a, byte[] b) throws IOException {
         if (a.length != b.length) {
-//            throw new IOException("Block size mismatch! " + a.length + " and " + b.length);
             log.warn("Uneven size XOR! {} and {}", a.length, b.length);
         }
         byte[] longer = a.length > b.length ? a : b;
@@ -40,6 +39,24 @@ public class ArrayUtils {
         }
         for (int i=common; i<longer.length; i++) {
             result[i] = longer[i];
+        }
+        return result;
+    }
+
+    public static byte[] addArrays(byte[] a, byte[] b) {
+        int maxLength = Math.max(a.length, b.length);
+        byte[] result = new byte[maxLength];
+        for (int i=0; i<maxLength; i++) {
+            result[i] = (byte) (a[i % a.length] + b[i % b.length]);
+        }
+        return result;
+    }
+
+    public static byte[] subtractArrays(byte[] a, byte[] b) {
+        int maxLength = Math.max(a.length, b.length);
+        byte[] result = new byte[maxLength];
+        for (int i=0; i<maxLength; i++) {
+            result[i] = (byte) (a[i % a.length] - b[i % b.length]);
         }
         return result;
     }
