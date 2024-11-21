@@ -41,7 +41,7 @@ public class CTRCrypto extends Crypto {
                 // XOR the ENCRYPTED BLOCK with the PLAINTEXT BLOCK
                 byte[] xorAppliedByteBlock = ArrayUtils.xorEach(
                         plainByteBlock,
-                        toEncrypt
+                        encryptedBlock
                 );
 
                 // ADD TO RESULT

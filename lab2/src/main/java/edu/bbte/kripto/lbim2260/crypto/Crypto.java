@@ -7,8 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Optional;
 
 import static java.lang.System.exit;
 
@@ -51,36 +49,4 @@ public abstract class Crypto {
     public abstract byte[] encrypt(byte[] plain);
 
     public abstract byte[] decrypt(byte[] cipher);
-
-    protected String bytesToString(byte[] bytes) {
-        return new String(bytes, charset);
-    }
-
-    protected byte[] stringToBytes(String string) {
-        return string.getBytes(charset);
-    }
-
-    public byte[] encryptBlock(byte[] plainBlock, String key) {
-        return aead.seal(plainBlock, data);
-    }
-
-    public byte[] decryptBlock(byte[] cipherBlock, String key) {
-        final Optional<byte[]> result = aead.open(cipherBlock, data);
-        return result.get();
-    }
-
-    public static String byteArrayToHex(byte[] a) {
-        StringBuilder sb = new StringBuilder(a.length * 2);
-        for (byte b : a)
-            sb.append(String.format("%02x", b));
-        return sb.toString();
-    }
-
-    protected byte[] buildSimpleByteArray(List<Byte> list) {
-        byte[] converted = new byte[list.size()];
-        for (int i=0; i<list.size(); i++) {
-            converted[i] = list.get(i);
-        }
-        return converted;
-    }
 }
