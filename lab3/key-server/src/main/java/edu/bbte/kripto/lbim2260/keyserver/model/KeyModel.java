@@ -1,0 +1,15 @@
+package edu.bbte.kripto.lbim2260.keyserver.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class KeyModel {
+    String id;
+    String publicKey;
+}

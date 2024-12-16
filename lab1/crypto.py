@@ -109,23 +109,30 @@ def decrypt_scytale(ciphertext: str, circumference: int):
 # Railfence Cipher
 
 def encrypt_railfence(plaintext: str, circumference: int):
-    """Encrypt plaintext using a Railfence cipher with a given circumference.
+    """Encrypt ciphertext using a Railfence cipher with a given circumference.
     """
-    encrypted = ""
-    start = 0
-    middle = circumference / 2
-    iteration = 1
-    step = 2 * (circumference - 1)
-    while (start < circumference):
-        encrypted += plaintext[start::step]
+    cipher_lines = circumference * ['']
+    i = 0
+    j = 0
+    n = len(plaintext)
 
-        if (iteration < middle):
-            step -= 2
-        else:
-            step += 2
-        iteration += 1
-        start += 1
-    return encrypted
+    while i < n:
+        for j in range(circumference):
+            if i < n:
+                cipher_lines[j] += plaintext[i]
+                i += 1
+            else:
+                break
+
+        for j in range(circumference - 2, 0, -1):
+            if i < n:
+                cipher_lines[j] += plaintext[i]
+                i += 1
+            else:
+                break
+    
+    ciphertext = ''.join(cipher_lines)
+    return ciphertext
 
 def decrypt_railfence(ciphertext: str, circumference: int):
     """Decrypt ciphertext using a Railfence cipher with a given circumference.
