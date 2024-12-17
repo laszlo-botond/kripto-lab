@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.util.Collection;
 import java.util.Random;
@@ -104,12 +105,14 @@ public class ClientController {
         String commonKey = clientDao.getCommonKey(partner);
         Crypto crypto = AssetLoader.setupCrypto(clientDao.getCommonCryptMethod(partner), clientDao.getCommonKey(partner));
         String encryptedMessage = clientService.encryptMessage(crypto, messageDto.getMessage());
-
-        String ans = clientService.httpSendMessage(messageDto.getTargetId(), encryptedMessage);
-        MessageDto ansDto = clientService.jsonToMessageDto(ans);
-
-        log.info("Encrypted and sent!");
-        return ansDto;
+        try {
+            String ans = clientService.httpSendMessage(messageDto.getTargetId(), encryptedMessage);
+            MessageDto ansDto = clientService.jsonToMessageDto(ans);
+            log.info("Encrypted and sent!");
+            return ansDto;
+        } catch (ResourceAccessException e) {
+            throw new NullPointerException();
+        }
     }
 
     @PostMapping("/msg")

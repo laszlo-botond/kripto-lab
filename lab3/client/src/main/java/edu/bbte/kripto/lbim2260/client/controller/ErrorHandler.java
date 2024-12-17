@@ -35,7 +35,15 @@ public class ErrorHandler {
     @ExceptionHandler
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ResponseBody
-    public ErrorDto handleTypeMismatch(SecurityException e) {
+    public ErrorDto handleSecurityError(SecurityException e) {
+        log.info("Secure communication could not be established.");
+        return new ErrorDto("Secure communication could not be established.");
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseBody
+    public ErrorDto handleNullError(NullPointerException e) {
         log.info("Secure communication could not be established.");
         return new ErrorDto("Secure communication could not be established.");
     }
