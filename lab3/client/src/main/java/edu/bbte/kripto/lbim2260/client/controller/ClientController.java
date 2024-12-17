@@ -31,23 +31,34 @@ public class ClientController {
 
     @PostMapping("/hello")
     public HandshakeDto receiveHello(HttpServletRequest req, @RequestBody HandshakeDto incomingHandshake) {
+        log.debug("Received: {}", incomingHandshake);
+        // decrypt
+        String clientId = clientService.decryptRsa(incomingHandshake.getIdClient());
+        Collection<String> decryptedBlockCipherList = incomingHandshake.getBlockCipherList().stream().map(mode -> clientService.decryptRsa(mode)).toList();
+
         log.info("{} {}", req.getMethod(), req.getRequestURL());
-        log.info("Handshake request from {}", incomingHandshake.getIdClient());
+        log.info("Handshake request from {}", clientId);
         try {
             // get partner's public key and save it
-            String ans = clientService.httpGetPublicKey(incomingHandshake.getIdClient());
-            PublicKeyDto ansDto = clientService.jsonToPublicKeyDto(ans);
-            log.info("Public key of {} is {}", incomingHandshake.getIdClient(), ansDto.getPublicKey());
-            clientDao.savePublicKey(incomingHandshake.getIdClient(), ansDto.getPublicKey());
+            String ans = clientService.httpGetPublicKey(clientId);
+            PublicKeyByteArrayDto ansDto = clientService.jsonToPublicKeyByteArrayDto(ans);
+            log.info("Public key of {} is {}", clientId, ansDto.getPublicKey());
+            clientDao.savePublicKey(clientId, ansDto.getPublicKey());
 
             // build response with the joint cipher method and save it
+            // encrypt
+            String encId = clientService.encryptRsa(clientDao.getId(), clientId);
+            Collection<String> commonList = clientService.getCommonCipherMethod(decryptedBlockCipherList);
+            Collection<String> encCommonList = commonList
+                    .stream()
+                    .map(mode -> clientService.encryptRsa(mode, clientId))
+                    .toList();
             HandshakeDto response = new HandshakeDto();
-            response.setIdClient(clientDao.getId());
-            Collection<String> commonList = clientService.getCommonCipherMethod(incomingHandshake.getBlockCipherList());
-            response.setBlockCipherList(commonList);
-            clientDao.saveCommonCryptMethod(incomingHandshake.getIdClient(), commonList);
+            response.setIdClient(encId);
+            response.setBlockCipherList(encCommonList);
+            clientDao.saveCommonCryptMethod(clientId, commonList);
 
-            log.info("Sending response crypt-method to {}...", incomingHandshake.getIdClient());
+            log.info("Sending response crypt-method to {}...", clientId);
             return response;
         } catch (NullPointerException e) {
             throw new SecurityException();
@@ -56,23 +67,27 @@ public class ClientController {
 
     @PostMapping("/half-key")
     public HalfKeyDto receiveHalfKey(HttpServletRequest req, @RequestBody HalfKeyDto incomingHalfKey) {
-        log.info("{} {}", req.getMethod(), req.getRequestURL());
-        log.info("Half-key request from {}", incomingHalfKey.getIdClient());
-        try {
-            // get partner's public key
-            String publicKey = clientDao.getPublicKey(incomingHalfKey.getIdClient());
+        log.debug("Received: {}", incomingHalfKey);
+        String decClientId = clientService.decryptRsa(incomingHalfKey.getIdClient());
+        String decHalfKey = clientService.decryptRsa(incomingHalfKey.getHalfKey());
 
+        log.info("{} {}", req.getMethod(), req.getRequestURL());
+        log.info("Half-key request from {}", decClientId);
+        try {
             // build response with other half of key
+            // encrypt
+            String encOwnId = clientService.encryptRsa(clientDao.getId(), decClientId);
             HalfKeyDto response = new HalfKeyDto();
-            response.setIdClient(clientDao.getId());
+            response.setIdClient(encOwnId);
             int halfKey = Math.abs(new Random().nextInt());
-            response.setHalfKey(String.valueOf(halfKey));
+            String encHalfKey = clientService.encryptRsa(String.valueOf(halfKey), decClientId);
+            response.setHalfKey(encHalfKey);
 
             // save common key
-            clientDao.saveCommonKey(incomingHalfKey.getIdClient(), incomingHalfKey.getHalfKey() + halfKey);
-            log.info("Common key with {} is {}!", incomingHalfKey.getIdClient(), incomingHalfKey.getHalfKey() + halfKey);
+            clientDao.saveCommonKey(decClientId, decHalfKey + halfKey);
+            log.info("Common key with {} is {}!", decClientId, decHalfKey + halfKey);
 
-            log.info("Sending response half-key to {}...", incomingHalfKey.getIdClient());
+            log.info("Sending response half-key to {}...", decClientId);
             return response;
         } catch (NullPointerException e) {
             throw new SecurityException();

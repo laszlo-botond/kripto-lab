@@ -24,7 +24,7 @@ public class MemoryClientDao implements ClientDao {
     String[] arrayOfBlockCipherModes;
     Collection<String> blockCipherModes;
 
-    Map<String, String> knownPublicKeys = new HashMap<>(); // cache, to avoid repeated http query
+    Map<String, byte[]> knownPublicKeys = new HashMap<>(); // cache, to avoid repeated http query
     Map<String, String> knownCommonKeys = new HashMap<>();
     Map<String, Collection<String>> commonCrpytMethods = new HashMap<>();
 
@@ -56,12 +56,12 @@ public class MemoryClientDao implements ClientDao {
     }
 
     @Override
-    public void savePublicKey(String idClient, String publicKey) {
+    public void savePublicKey(String idClient, byte[] publicKey) {
         knownPublicKeys.put(idClient, publicKey);
     }
 
     @Override
-    public String getPublicKey(String idClient) {
+    public byte[] getPublicKey(String idClient) {
         return knownPublicKeys.get(idClient);
     }
 

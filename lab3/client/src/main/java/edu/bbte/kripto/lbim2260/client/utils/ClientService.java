@@ -14,11 +14,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
+import java.security.spec.EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 
 import static java.lang.System.exit;
@@ -56,7 +58,8 @@ public class ClientService {
             // build request body
             RegistrationDto reqBody = new RegistrationDto();
             reqBody.setId(clientDao.getId());
-            reqBody.setPublicKey(Arrays.toString(pair.getPublic().getEncoded()));
+            String stringifiedPublicKey = Base64.getEncoder().encodeToString(pair.getPublic().getEncoded());
+            reqBody.setPublicKey(stringifiedPublicKey);
 
             String url = "http://localhost:8000/keys";
             log.info("Sending registration request to {}", url);
@@ -84,14 +87,20 @@ public class ClientService {
     public String httpSendHandshake(String idClient) {
         RestTemplate restTemplate = new RestTemplate();
 
+        // encrypt
+        String encId = encryptRsa(clientDao.getId(), idClient);
+        Collection<String> encCiphers = clientDao.getSupportedCipherModes()
+                .stream()
+                .map(mode -> encryptRsa(mode, idClient))
+                .toList();
         try {
             String url = "http://localhost:" + idClient + "/comm/hello";
             log.info("Sending request to {}", url);
 
             // build request body
             HandshakeDto reqBody = new HandshakeDto();
-            reqBody.setIdClient(clientDao.getId());
-            reqBody.setBlockCipherList(clientDao.getSupportedCipherModes());
+            reqBody.setIdClient(encId);
+            reqBody.setBlockCipherList(encCiphers);
 
             return restTemplate.postForObject(url, reqBody, String.class);
         } catch (RestClientException e) {
@@ -103,14 +112,18 @@ public class ClientService {
     public String httpSendHalfSecret(String idClient, String halfKey) {
         RestTemplate restTemplate = new RestTemplate();
 
+        // encrypt
+        String encOwnId = encryptRsa(clientDao.getId(), idClient);
+        String encHalfKey = encryptRsa(halfKey, idClient);
+
         try {
             String url = "http://localhost:" + idClient + "/comm/half-key";
             log.info("Sending request to {}", url);
 
             // build request body
             HalfKeyDto reqBody = new HalfKeyDto();
-            reqBody.setIdClient(clientDao.getId());
-            reqBody.setHalfKey(halfKey);
+            reqBody.setIdClient(encOwnId);
+            reqBody.setHalfKey(encHalfKey);
 
             return restTemplate.postForObject(url, reqBody, String.class);
         } catch (RestClientException e) {
@@ -150,6 +163,17 @@ public class ClientService {
         }
     }
 
+    public PublicKeyByteArrayDto jsonToPublicKeyByteArrayDto(String json) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(json, PublicKeyByteArrayDto.class);
+
+        } catch (Exception e) {
+            log.error("Error converting...", e);
+            return null;
+        }
+    }
+
     public HalfKeyDto jsonToHalfKeyDto(String json) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -185,7 +209,7 @@ public class ClientService {
     public void sendHandshake(String idClient) {
         // get partner's public key and save it
         String ans = httpGetPublicKey(idClient);
-        PublicKeyDto ansDto = jsonToPublicKeyDto(ans);
+        PublicKeyByteArrayDto ansDto = jsonToPublicKeyByteArrayDto(ans);
         log.info("Public key of {} is {}", idClient, ansDto.getPublicKey());
         clientDao.savePublicKey(idClient, ansDto.getPublicKey());
 
@@ -196,16 +220,25 @@ public class ClientService {
     }
 
     private void receiveAck(HandshakeDto incomingHandshake) {
-        log.info("ACK from {}", incomingHandshake.getIdClient());
-        log.info("Common encryption method: {}", incomingHandshake.getBlockCipherList());
-        clientDao.saveCommonCryptMethod(incomingHandshake.getIdClient(), incomingHandshake.getBlockCipherList());
+        // decrypt
+        String decIdClient = decryptRsa(incomingHandshake.getIdClient());
+        Collection<String> decBlockCipherList = incomingHandshake.getBlockCipherList()
+                .stream()
+                .map(this::decryptRsa)
+                .toList();
+        log.info("ACK from {}", decIdClient);
+        log.info("Common encryption method: {}", decBlockCipherList);
+        clientDao.saveCommonCryptMethod(decIdClient, decBlockCipherList);
         int halfKey = Math.abs(new Random().nextInt());
 
         // receive answer and save half-key
-        String ans = httpSendHalfSecret(incomingHandshake.getIdClient(), String.valueOf(halfKey));
+        String ans = httpSendHalfSecret(decIdClient, String.valueOf(halfKey));
         HalfKeyDto ansDto = jsonToHalfKeyDto(ans);
-        clientDao.saveCommonKey(ansDto.getIdClient(), halfKey + ansDto.getHalfKey());
-        log.info("Common key with {} is {}!", ansDto.getIdClient(), halfKey + ansDto.getHalfKey());
+        // decrypt
+        decIdClient = decryptRsa(ansDto.getIdClient());
+        String decHalfKey = decryptRsa(ansDto.getHalfKey());
+        clientDao.saveCommonKey(decIdClient, halfKey + decHalfKey);
+        log.info("Common key with {} is {}!", decIdClient, halfKey + decHalfKey);
     }
 
     // -------------------- others --------------------
@@ -224,6 +257,8 @@ public class ClientService {
         }
         return commonOptions;
     }
+
+    // -------------------- Encrypt-Decrypt --------------------
 
     public String encryptMessage(Crypto crypto, String message) {
         try {
@@ -245,6 +280,38 @@ public class ClientService {
             return new String(decNoPad, StandardCharsets.ISO_8859_1);
         } catch (Exception e) {
             log.error("Error decrypting message. It will not be sent.", e);
+            return null;
+        }
+    }
+
+    public String encryptRsa(String message, String partnerId) {
+        try {
+            byte[] partnerPublicKeyBytes = clientDao.getPublicKey(partnerId);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(partnerPublicKeyBytes);
+            PublicKey partnerPublicKey = keyFactory.generatePublic(publicKeySpec);
+
+
+            byte[] byteArray = message.getBytes(StandardCharsets.ISO_8859_1);
+            Cipher encryptCipher = Cipher.getInstance("RSA");
+            encryptCipher.init(Cipher.ENCRYPT_MODE, partnerPublicKey);
+            byte[] encryptedBytes = encryptCipher.doFinal(byteArray);
+            return new String(encryptedBytes, StandardCharsets.ISO_8859_1);
+        } catch (Exception e) {
+            log.error("RSA encryption error.", e);
+            return null;
+        }
+    }
+
+    public String decryptRsa(String message) {
+        try {
+            byte[] byteArray = message.getBytes(StandardCharsets.ISO_8859_1);
+            Cipher decryptCipher = Cipher.getInstance("RSA");
+            decryptCipher.init(Cipher.DECRYPT_MODE, clientDao.getOwnKey().getPrivate());
+            byte[] encryptedBytes = decryptCipher.doFinal(byteArray);
+            return new String(encryptedBytes, StandardCharsets.ISO_8859_1);
+        } catch (Exception e) {
+            log.error("RSA encryption error.", e);
             return null;
         }
     }

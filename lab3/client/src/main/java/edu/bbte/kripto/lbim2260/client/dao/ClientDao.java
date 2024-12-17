@@ -13,9 +13,9 @@ public interface ClientDao {
 
     public KeyPair getOwnKey();
 
-    public void savePublicKey(String idClient, String publicKey);
+    public void savePublicKey(String idClient, byte[] publicKey);
 
-    public String getPublicKey(String idClient);
+    public byte[] getPublicKey(String idClient);
 
     public void saveCommonKey(String idClient, String commonKey);
 
