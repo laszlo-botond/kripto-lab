@@ -3,4 +3,5 @@ rootProject.name = 'lab3'
 include 'key-server'
 include 'common-crypt'
 include 'client'
+include 'test-module'
 
